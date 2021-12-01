@@ -1,0 +1,10 @@
+user:
+  # 网易云音乐账号（手机号/网易邮箱）
+  account: ''
+  # 密码MD5
+  password: ''
+  # 国家码，用于国外手机号登陆，国内为86
+  country-code: 86
+push:
+  # Server酱免费版密匙,不需要推送就留空（免费申请参考:https://sct.ftqq.com/login）
+  sckey: ''
