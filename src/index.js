@@ -1,5 +1,6 @@
+const fs = require('fs');
 const path = require('path');
-const { read } = require('node-yaml');
+const yaml = require('js-yaml');
 const axios = require('./utils/request').service;
 const queryString = require('querystring');
 const moment = require('moment');
@@ -49,20 +50,15 @@ class Task {
             'sckey': process.env.PUSH_SCKEY ?? ''
           }
         };
-        this.verifySetting() ? Promise.resolve() : Promise.reject('配置缺失');
       } else {
-        read(path.resolve('init.yml'))
-          .then(setting => this.setting = setting)
-          .then(() => this.verifySetting())
-          .then((status) => status ? Promise.resolve() : Promise.reject('配置缺失'))
-          .then(() => {
-            this.log('初始化完成');
-            resolve();
-          })
-          .catch(e => {
-            this.log('初始化失败');
-            reject(e);
-          });
+        this.setting = yaml.load(fs.readFileSync(path.resolve('init.yml'), 'utf8'));
+      }
+      if (this.verifySetting()) {
+        this.log('初始化完成');
+        resolve();
+      } else {
+        this.log('初始化失败');
+        reject('配置缺失');
       }
     });
   }
@@ -163,15 +159,15 @@ class Task {
           .then(resp => {
             const { data } = resp;
             if (data.code === 200) {
-              this.log(`第${time}次打卡成功`);
+              this.log(`第${time}次听歌成功`);
               resolve(true);
             } else {
-              this.log(`第${time}次打卡失败`);
+              this.log(`第${time}次听歌失败`);
               reject(data.msg || data.message);
             }
           })
           .catch(e => {
-            this.log(`第${time}次打卡失败`);
+            this.log(`第${time}次听歌失败`);
             reject(e);
           });
     });
@@ -322,11 +318,11 @@ class Task {
         } else {
           this.day = Math.ceil((20000 - this.user.listenSongs) / 300);
         }
-        this.log('打卡结束');
+        this.log('听歌结束');
         resolve();
       } catch (e) {
         this.error = e;
-        this.log('打卡结束');
+        this.log('听歌结束');
         console.error(e);
         resolve();
       }

@@ -10,8 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.24.0",
-    "moment": "^2.29.1",
-    "node-yaml": "^4.0.1"
+    "js-yaml": "^4.1.0",
+    "moment": "^2.29.1"
   },
   "devDependencies": {
     "eslint": "^8.2.0",
