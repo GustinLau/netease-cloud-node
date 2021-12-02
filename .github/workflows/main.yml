@@ -4,8 +4,9 @@ name: Start
 
 # Controls when the workflow will run
 on:
-  #schedule:
-  #- cron: "0 2 * * 1-5"
+  schedule:
+    # UTC
+    - cron: '0 30 0 * *'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:

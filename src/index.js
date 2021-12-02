@@ -88,7 +88,7 @@ class Task {
    */
   log(...texts) {
     for (const text of texts) {
-      this.logs.push(`- ${moment().format('HH:mm:ss')} ${text}`);
+      this.logs.push(`- ${moment().utcOffset(8).format('HH:mm:ss')} ${text}`);
       console.log(text);
     }
   }
@@ -300,7 +300,7 @@ class Task {
         await this.detail();
         const counter = this.user.listenSongs;
         this.log('开始听歌');
-        const total = 3;
+        const total = 10;
         for (let i = 0; i < total; i++) {
           await this.listen(i + 1);
           this.listenCount++;
