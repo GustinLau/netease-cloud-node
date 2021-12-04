@@ -3,20 +3,12 @@ const queryString = require('querystring');
 const request = require('../utils/request').service;
 
 const NONCE = '0CoJUm6Qyw8W8jud';
-const PUB_KEY = '010001';
 const VI = '0102030405060708';
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.157' +
-  ' Safari/537.36';
 const COOKIE = 'os=pc; osver=Microsoft-Windows-10-Professional-build-10586-64bit; appver=2.0.3.131777; channel=netease;' +
   ' __remember_me=true;';
 const REFERER = 'https://music.163.com/';
 const SECRET_KEY = 'TA3YiYCfY2dDJQgg';
 const ENC_SEC_KEY = '84ca47bca10bad09a6b04c5c927ef077d9b9f1e37098aa3eac6ea70eb59df0aa28b691b7e75e4f1f9831754919ea784c8f74fbfadf2898b0be17849fd656060162857830e241aba44991601f137624094c114ea8d17bce815b0cd4e5b8e2fbaba978c6d1d14dc3d1faf852bdd28818031ccdaaa13a6018e1024e2aae98844210';
-
-// const __COOKIE__ = {
-//   MUSIC_U: '8a0f2d6cefcecbfcb7cedd25718635e407c56ed13b600d4a7726c4f72513322f993166e004087dd3d78b6050a17a35e705925a4e6992f61dfe3f0151024f9e31',
-//   __csrf: '8eb0f891d7786196e3768847d361f588'
-// };
 
 function aes_encode(secretData, secret) {
   const cipherChunks = [];
@@ -191,12 +183,13 @@ function listen(cookie) {
 
 /**
  * 签到
+ * @param type 0 移动端 1 PC端
  * @param cookie
  * @return {Promise<AxiosResponse<any>>}
  */
-function sign(cookie) {
+function sign(type, cookie) {
   const URL = 'https://music.163.com/weapi/point/dailyTask';
-  return curl(URL, { type: 0 }, cookie);
+  return curl(URL, { type }, cookie);
 }
 
 module.exports = {

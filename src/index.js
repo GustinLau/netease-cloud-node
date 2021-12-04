@@ -106,53 +106,60 @@ class Task {
       } else {
         request = this.request(login, user['account'], user['password'], user['country-code']);
       }
-      request.then(resp => {
-        const { data } = resp;
-        if (data.code === 200) {
-          this.cookie = resp.$cookie;
-          this.user = {
-            uid: data.account.id,
-            name: data.profile.nickname
-          };
-          this.log('登录成功');
-          resolve();
-        } else {
+      request
+        .then(resp => {
+          const { data } = resp;
+          if (data.code === 200) {
+            this.cookie = resp.$cookie;
+            this.user = {
+              uid: data.account.id,
+              name: data.profile.nickname
+            };
+            this.log('登录成功');
+            resolve();
+          } else {
+            this.log('登录失败');
+            reject('登录失败---' + data.msg || data.message);
+          }
+        })
+        .catch(e => {
           this.log('登录失败');
-          reject('登录失败---' + data.msg || data.message);
-        }
-      })
-             .catch(e => {
-               this.log('登录失败');
-               reject(e);
-             });
+          reject(e);
+        });
     });
 
   }
 
   /**
    * 每日签到
+   * @param type
    * @return {Promise<unknown>}
    */
-  sign() {
+  sign(type) {
     return new Promise((resolve) => {
-      this.request(sign)
+      this.request(sign, type)
           .then(resp => {
             const { data } = resp;
             if (data.code === 200) {
-              this.log('签到成功');
+              this.log(`${type === 0 ? '移动端' : 'PC端'}签到成功，获得云贝${data.point}`);
               resolve(true);
             } else {
-              this.log('重复签到');
+              this.log(`${type === 0 ? '移动端' : 'PC端'}重复签到`);
               resolve(false);
             }
           })
-          .catch(e => {
-            this.log('签到失败');
+          .catch(() => {
+            this.log(`${type === 0 ? '移动端' : 'PC端'}签到失败`);
             resolve(false);
           });
     });
   }
 
+  /**
+   * 听歌
+   * @param time
+   * @return {Promise<unknown>}
+   */
   listen(time) {
     return new Promise((resolve, reject) => {
       this.request(listen)
@@ -184,8 +191,7 @@ class Task {
             if (data.code === 200) {
               this.user.level = data.level;
               this.user.listenSongs = data.listenSongs;
-              this.log('获取用户详情成功');
-              resolve();
+              resolve(data);
             } else {
               this.log('获取用户详情失败');
               reject('获取用户详情失败---' + data.msg || data.message);
@@ -291,34 +297,40 @@ class Task {
   /**
    * 执行听歌任务
    */
-  start() {
+  async start() {
     new Promise(async resolve => {
       try {
         await this.init();
         await this.login();
-        await this.sign();
-        await this.detail();
+        await this.sign(0);
+        await this.sign(1);
+        const detail = await this.detail();
+        this.log(`当前账号云贝数：${detail.userPoint.balance}`);
         const counter = this.user.listenSongs;
-        this.log('开始听歌');
-        const total = 10;
-        for (let i = 0; i < total; i++) {
-          await this.listen(i + 1);
-          this.listenCount++;
-          this.log('等待10秒');
-          await new Promise(resolve => setTimeout(resolve, 10 * 1000));
-          await this.detail();
-          this.songCount = this.user.listenSongs - counter;
-          this.log(`今天已播放${this.songCount}首`);
-          if (this.songCount >= 300) {
-            break;
+        if (counter < 20000) {
+          this.log(`当前账号听歌量${counter}，开始听歌`);
+          const total = 10;
+          for (let i = 0; i < total; i++) {
+            await this.listen(i + 1);
+            this.listenCount++;
+            this.log('等待10秒');
+            await new Promise(resolve => setTimeout(resolve, 10 * 1000));
+            await this.detail();
+            this.songCount = this.user.listenSongs - counter;
+            this.log(`今天已播放${this.songCount}首`);
+            if (this.songCount >= 300) {
+              break;
+            }
           }
-        }
-        if (this.user.listenSongs >= 20000) {
-          this.day = 0;
+          if (this.user.listenSongs >= 20000) {
+            this.day = 0;
+          } else {
+            this.day = Math.ceil((20000 - this.user.listenSongs) / 300);
+          }
+          this.log('听歌结束');
         } else {
-          this.day = Math.ceil((20000 - this.user.listenSongs) / 300);
+          this.log(`当前账号听歌量${counter}，不再执行听歌任务`);
         }
-        this.log('听歌结束');
         resolve();
       } catch (e) {
         this.error = e;
@@ -328,7 +340,6 @@ class Task {
       }
     })
       .then(() => this.serverPush());
-
   }
 }
 
