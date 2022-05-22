@@ -1,7 +1,7 @@
 user:
   # 网易云音乐账号（手机号/网易邮箱）
   account: ''
-  # 密码MD5
+  # 密码MD5(32位小写)
   password: ''
   # 国家码，用于国外手机号登陆，国内为86
   country-code: 86

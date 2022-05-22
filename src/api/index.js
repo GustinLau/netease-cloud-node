@@ -2,27 +2,57 @@ const crypto = require('crypto');
 const queryString = require('querystring');
 const request = require('../utils/request').service;
 
-const NONCE = '0CoJUm6Qyw8W8jud';
-const VI = '0102030405060708';
-const COOKIE = 'os=pc; osver=Microsoft-Windows-10-Professional-build-10586-64bit; appver=2.0.3.131777; channel=netease;' +
-  ' __remember_me=true;';
-const REFERER = 'https://music.163.com/';
-const SECRET_KEY = 'TA3YiYCfY2dDJQgg';
-const ENC_SEC_KEY = '84ca47bca10bad09a6b04c5c927ef077d9b9f1e37098aa3eac6ea70eb59df0aa28b691b7e75e4f1f9831754919ea784c8f74fbfadf2898b0be17849fd656060162857830e241aba44991601f137624094c114ea8d17bce815b0cd4e5b8e2fbaba978c6d1d14dc3d1faf852bdd28818031ccdaaa13a6018e1024e2aae98844210';
+const base62 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+const presetKey = Buffer.from('0CoJUm6Qyw8W8jud')
+const iv = Buffer.from('0102030405060708')
+const publicKey =
+  '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----'
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.157' +
+  ' Safari/537.36';
+const COOKIE = 'os=pc; appver=2.9.7';
+const REFERER = 'https://music.163.com';
 
-function aes_encode(secretData, secret) {
-  const cipherChunks = [];
-  const cipher = crypto.createCipheriv('aes-128-cbc', secret, VI);
-  cipher.setAutoPadding(true);
-  cipherChunks.push(cipher.update(secretData, 'utf8', 'base64'));
-  cipherChunks.push(cipher.final('base64'));
-  return cipherChunks.join('');
+// const __COOKIE__ = {
+//   MUSIC_U: '8a0f2d6cefcecbfcb7cedd25718635e407c56ed13b600d4a7726c4f72513322f993166e004087dd3d78b6050a17a35e705925a4e6992f61dfe3f0151024f9e31',
+//   __csrf: '8eb0f891d7786196e3768847d361f588'
+// };
+
+const aesEncrypt = (buffer, mode, key, iv) => {
+  const cipher = crypto.createCipheriv('aes-128-' + mode, key, iv)
+  return Buffer.concat([cipher.update(buffer), cipher.final()])
+}
+
+const rsaEncrypt = (buffer, key) => {
+  buffer = Buffer.concat([Buffer.alloc(128 - buffer.length), buffer])
+  return crypto.publicEncrypt(
+    {key: key, padding: crypto.constants.RSA_NO_PADDING},
+    buffer,
+  )
+}
+
+const encrypt = (object) => {
+  const text = JSON.stringify(object)
+  const secretKey = crypto
+    .randomBytes(16)
+    .map((n) => base62.charAt(n % 62).charCodeAt())
+  return {
+    params: aesEncrypt(
+      Buffer.from(
+        aesEncrypt(Buffer.from(text), 'cbc', presetKey, iv).toString('base64'),
+      ),
+      'cbc',
+      secretKey,
+      iv,
+    ).toString('base64'),
+    encSecKey: rsaEncrypt(secretKey.reverse(), publicKey).toString('hex'),
+  }
 }
 
 function curl(url, data = {}, cookie = null) {
   const headers = {
-    referer: REFERER,
-    Cookie: COOKIE
+    'Referer': REFERER,
+    'Cookie': COOKIE,
+    'User-Agent': USER_AGENT
   };
   if (cookie) {
     if (typeof cookie === 'string') {
@@ -37,10 +67,7 @@ function curl(url, data = {}, cookie = null) {
     let csrfToken = (headers['Cookie'] || '').match(/_csrf=([^(;|$)]+)/);
     data.csrf_token = csrfToken ? csrfToken[1] : '';
   }
-  data = {
-    params: aes_encode(aes_encode(JSON.stringify(data), NONCE), SECRET_KEY),
-    encSecKey: ENC_SEC_KEY
-  };
+  data = encrypt(data)
   return request({
     url,
     method: 'POST',
@@ -121,8 +148,8 @@ function personalized(limit, cookie) {
       total: 'true',
       n: 1000
     }, cookie)
-      .then(({ data }) => {
-        const { result } = data;
+      .then(({data}) => {
+        const {result} = data;
         resolve((result || []).map(r => r.id));
       });
   });
@@ -142,7 +169,7 @@ function getSongId(playlist_id, cookie) {
       n: 1000,
       csrf_token: ''
     }, cookie)
-      .then(({ data }) => {
+      .then(({data}) => {
         resolve(data.playlist.trackIds);
       });
   });
@@ -175,7 +202,7 @@ function listen(cookie) {
       }
     }
     const URL = 'https://music.163.com/weapi/feedback/weblog';
-    curl(URL, { logs: JSON.stringify(ids) }, cookie)
+    curl(URL, {logs: JSON.stringify(ids)}, cookie)
       .then(resolve)
       .catch(reject);
   });
